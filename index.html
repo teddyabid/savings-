@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>সঞ্চয় ও ঋণ</title>
+<style>
+:root{--bg:#0D1512;--card:#16231E;--card2:#1F3029;--ink:#EDF3EF;--mute:#8FA69B;--line:#2B4037;--gold:#E8B84A;--mint:#5FD6A7;--red:#E5645C;--blue:#6FA8FF}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans Bengali","Hind Siliguri",system-ui,sans-serif}
+body{padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(88px + env(safe-area-inset-bottom,0px))}
+h2{margin:6px 0 12px;font-size:22px}
+.card{background:var(--card);border-radius:16px;padding:16px;margin:12px 0}
+.hero{background:linear-gradient(155deg,#2A3A1C,#16231E);text-align:center;padding:22px 12px}
+.hero small{color:var(--mute);font-size:13px}.big{font-size:34px;font-weight:800;color:var(--gold);margin:6px 0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--card);border-radius:14px;padding:14px}.stat b{display:block;font-size:19px}.stat span{font-size:12px;color:var(--mute)}
+.bar{height:9px;background:var(--line);border-radius:6px;overflow:hidden;margin:8px 0 4px}.bar i{display:block;height:100%;background:var(--mint)}
+.row2{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mute{color:var(--mute);font-size:12px}
+.item{background:var(--card);border-radius:14px;padding:14px;margin:10px 0;border-left:5px solid var(--c,var(--mint))}
+.item b{font-size:16px}
+.btn{display:block;width:100%;padding:14px;border:0;border-radius:13px;font:inherit;font-size:16px;font-weight:600;margin:8px 0;color:#0A130F}
+.b-gold{background:var(--gold)}.b-mint{background:var(--mint)}.b-gray{background:var(--card2);color:var(--ink)}.b-red{background:var(--red);color:#fff}
+.seg{display:flex;gap:6px;margin:8px 0}.seg button{flex:1;padding:10px 4px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:13px}.seg button.on{background:var(--gold);color:#0A130F;border-color:var(--gold)}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:#08100D;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav button{flex:1;background:none;border:0;color:var(--mute);padding:10px 0 8px;font:inherit;font-size:11px}nav button span{display:block;font-size:20px}nav button.on{color:var(--gold)}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:9}.sheet.open{display:flex}
+.form{background:var(--card);width:100%;max-height:92vh;overflow:auto;border-radius:22px 22px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom,0px))}
+label{display:block;margin:12px 0 6px;font-size:13px;color:var(--mute)}
+input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+.row{display:flex;gap:10px}.row .btn{margin:14px 0 0}
+.hi{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}.hi:last-child{border:0}.hi em{font-style:normal;color:var(--mute);font-size:12px;display:block}
+.x{background:none;border:0;color:var(--mute);font-size:18px}
+.chart{display:flex;align-items:flex-end;gap:7px;height:110px;margin-top:10px}.chart div{flex:1;text-align:center;font-size:10px;color:var(--mute);display:flex;flex-direction:column;justify-content:flex-end;height:100%}.chart i{display:block;border-radius:4px 4px 0 0;margin-bottom:4px;min-height:2px}
+.warn{background:#3A2220;border:1px solid var(--red);border-radius:12px;padding:10px 12px;margin:8px 0;font-size:13px}
+.note{font-size:13px;color:var(--mute);line-height:1.6}
+.tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;background:var(--card2);color:var(--mute);margin-left:6px}
+</style>
+</head>
+<body>
+<div id="view"></div>
+<nav id="nav"></nav>
+<div class="sheet" id="sheet"><div class="form" id="form"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+const bn=s=>String(s).replace(/\d/g,d=>'০১২৩৪৫৬৭৮৯'[d]);
+const M=n=>(n<0?'-':'')+'৳'+bn(Math.round(Math.abs(n)).toLocaleString('en-US'));
+const MN=['জানু','ফেব্রু','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টে','অক্টো','নভে','ডিসে'];
+const DEF={n:1,g:[],l:[],rem:true};
+function load(){try{const v=JSON.parse(localStorage.getItem('sl'));return v?{...DEF,...v}:JSON.parse(JSON.stringify(DEF))}catch(e){return JSON.parse(JSON.stringify(DEF))}}
+let D=load(),tab='home',lf='all';
+const save=()=>{try{localStorage.setItem('sl',JSON.stringify(D))}catch(e){}schedule()};
+const sum=e=>e.reduce((a,b)=>a+b.a,0);
+const tot=l=>l.p+(l.x||0);
+const fd=t=>{const d=new Date(t);return bn(d.getDate())+' '+MN[d.getMonth()]+' '+bn(d.getFullYear())};
+const iso=t=>{const d=new Date(t);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const tsOf=v=>v?new Date(v+'T12:00:00').getTime():Date.now();
+const daysTo=s=>Math.ceil((new Date(s+'T23:59:59')-Date.now())/864e5);
+const pc=(a,b)=>b>0?Math.max(0,Math.min(100,a/b*100)):0;
+const gid=id=>D.g.find(x=>x.id===id),lid=id=>D.l.find(x=>x.id===id);
+const mkey=t=>{const d=new Date(t);return d.getFullYear()+'-'+d.getMonth()};
+function months(n){const r=[],now=new Date();for(let i=n-1;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);r.push({k:d.getFullYear()+'-'+d.getMonth(),l:MN[d.getMonth()]})}return r}
+function bars(vals,color){const mx=Math.max(1,...vals.map(v=>v.v));return `<div class="chart">${vals.map(v=>`<div><span style="font-size:9px">${v.v?bn(Math.round(v.v/100)/10)+'k':''}</span><i style="height:${v.v/mx*70}px;background:${color}"></i>${v.l}</div>`).join('')}</div>`}
+
+function totals(){
+ const saved=D.g.reduce((a,g)=>a+sum(g.e),0),target=D.g.reduce((a,g)=>a+g.t,0);
+ const owe=D.l.filter(l=>l.k==='owe'),lent=D.l.filter(l=>l.k==='lent');
+ const oweRem=owe.reduce((a,l)=>a+Math.max(0,tot(l)-sum(l.e)),0),lentRem=lent.reduce((a,l)=>a+Math.max(0,tot(l)-sum(l.e)),0);
+ const paid=owe.reduce((a,l)=>a+sum(l.e),0),got=lent.reduce((a,l)=>a+sum(l.e),0);
+ return{saved,target,oweRem,lentRem,paid,got,net:saved+lentRem-oweRem}
+}
+function alerts(){
+ return D.l.filter(l=>l.due&&tot(l)-sum(l.e)>0).map(l=>({l,d:daysTo(l.due)})).filter(x=>x.d<=7).sort((a,b)=>a.d-b.d)
+  .map(x=>`<div class="warn">${x.l.k==='owe'?'💸 পরিশোধ':'📥 আদায়'}: <b>${x.l.n}</b> — ${x.d<0?bn(-x.d)+' দিন দেরি':x.d===0?'আজই শেষ দিন':bn(x.d)+' দিন বাকি'} (বাকি ${M(tot(x.l)-sum(x.l.e))})</div>`).join('');
+}
+function home(){
+ const T=totals();
+ return `<h2>আমার হিসাব</h2>
+ <div class="card hero"><small>মোট সঞ্চয়</small><div class="big">${M(T.saved)}</div><small>লক্ষ্য ${M(T.target)} এর ${bn(Math.round(pc(T.saved,T.target)))}%</small><div class="bar"><i style="width:${pc(T.saved,T.target)}%;background:var(--gold)"></i></div></div>
+ ${alerts()}
+ <div class="grid">
+  <div class="stat"><b style="color:var(--red)">${M(T.oweRem)}</b><span>আমি ঋণী (বাকি)</span></div>
+  <div class="stat"><b style="color:var(--blue)">${M(T.lentRem)}</b><span>আমার পাওনা (বাকি)</span></div>
+  <div class="stat"><b>${M(T.paid)}</b><span>এ পর্যন্ত পরিশোধ করেছি</span></div>
+  <div class="stat"><b>${M(T.got)}</b><span>এ পর্যন্ত ফেরত পেয়েছি</span></div>
+ </div>
+ <div class="card"><div class="row2"><b>নিট অবস্থা</b><b style="color:${T.net>=0?'var(--mint)':'var(--red)'}">${M(T.net)}</b></div><div class="note" style="margin-top:6px">সঞ্চয় + পাওনা − ঋণ</div></div>
+ <button class="btn b-gold" data-act="newg">➕ নতুন সঞ্চয় লক্ষ্য</button>
+ <button class="btn b-gray" data-act="newl">➕ নতুন ঋণ</button>`;
+}
+function goals(){
+ const L=D.g.map(g=>{const s=sum(g.e),p=pc(s,g.t);
+  return `<div class="item" data-g="${g.id}" style="--c:var(--gold)"><div class="row2"><b>${g.n}</b><span>${bn(Math.round(p))}%</span></div><div class="bar"><i style="width:${p}%;background:var(--gold)"></i></div><div class="row2 mute"><span>জমা ${M(s)}</span><span>লক্ষ্য ${M(g.t)}</span></div><div class="mute">বাকি ${M(Math.max(0,g.t-s))}${g.dl?' · শেষ '+fd(g.dl):''}</div></div>`}).join('');
+ return `<h2>সঞ্চয়</h2><button class="btn b-gold" data-act="newg">➕ নতুন লক্ষ্য</button>${L||'<div class="note">এখনো কোনো লক্ষ্য নেই। উপরের বাটনে চাপুন।</div>'}`;
+}
+function loans(){
+ const list=D.l.filter(l=>lf==='all'||l.k===lf).map(l=>{const t=tot(l),s=sum(l.e),r=Math.max(0,t-s),p=pc(s,t),d=l.due?daysTo(l.due):null;
+  const col=l.k==='owe'?'var(--red)':'var(--blue)';
+  return `<div class="item" data-l="${l.id}" style="--c:${col}"><div class="row2"><b>${l.n}<span class="tag">${l.k==='owe'?'দেনা':'পাওনা'}</span></b><span>${r<=0?'✅ শোধ':bn(Math.round(p))+'%'}</span></div><div class="bar"><i style="width:${p}%;background:${col}"></i></div><div class="row2 mute"><span>${l.k==='owe'?'পরিশোধ':'ফেরত'} ${M(s)}</span><span>মোট ${M(t)}</span></div><div class="row2"><span class="mute">বাকি</span><b style="color:${r>0?col:'var(--mint)'}">${M(r)}</b></div>${l.due&&r>0?`<div class="mute" style="color:${d<0?'var(--red)':'var(--mute)'}">শেষ তারিখ ${fd(l.due)} (${d<0?bn(-d)+' দিন দেরি':bn(d)+' দিন বাকি'})</div>`:''}</div>`}).join('');
+ return `<h2>ঋণ</h2><div class="seg"><button data-lf="all" class="${lf==='all'?'on':''}">সব</button><button data-lf="owe" class="${lf==='owe'?'on':''}">আমি নিয়েছি</button><button data-lf="lent" class="${lf==='lent'?'on':''}">আমি দিয়েছি</button></div><button class="btn b-gold" data-act="newl">➕ নতুন ঋণ</button>${list||'<div class="note">এখানে কিছু নেই।</div>'}`;
+}
+function report(){
+ const ms=months(6),T=totals();
+ const dep=ms.map(m=>({l:m.l,v:D.g.reduce((a,g)=>a+g.e.filter(e=>mkey(e.t)===m.k&&e.a>0).reduce((x,e)=>x+e.a,0),0)}));
+ const pay=ms.map(m=>({l:m.l,v:D.l.filter(l=>l.k==='owe').reduce((a,l)=>a+l.e.filter(e=>mkey(e.t)===m.k).reduce((x,e)=>x+e.a,0),0)}));
+ const got=ms.map(m=>({l:m.l,v:D.l.filter(l=>l.k==='lent').reduce((a,l)=>a+l.e.filter(e=>mkey(e.t)===m.k).reduce((x,e)=>x+e.a,0),0)}));
+ const gl=D.g.map(g=>{const s=sum(g.e),r=Math.max(0,g.t-s),dp=g.e.filter(e=>e.a>0);let est='';
+  if(r<=0)est='🎉 লক্ষ্য পূর্ণ';else{
+   if(dp.length){const first=Math.min(...dp.map(e=>e.t)),mo=Math.max(1,(Date.now()-first)/2.63e9),avg=dp.reduce((a,e)=>a+e.a,0)/mo;if(avg>0)est='এই গতিতে আরও ~'+bn(Math.ceil(r/avg))+' মাস লাগবে (গড় '+M(avg)+'/মাস)'}
+   if(g.dl){const dm=Math.max(1,Math.ceil(daysTo(g.dl)/30));est+=(est?'<br>':'')+'সময়মতো শেষ করতে মাসে '+M(r/dm)+' লাগবে'}
+  }
+  return `<div class="hi"><div><b>${g.n}</b><em>${M(s)} / ${M(g.t)}</em><em>${est}</em></div><span>${bn(Math.round(pc(s,g.t)))}%</span></div>`}).join('');
+ const ll=D.l.map(l=>{const t=tot(l),s=sum(l.e),r=Math.max(0,t-s);return `<div class="hi"><div><b>${l.n}</b> <span class="tag">${l.k==='owe'?'দেনা':'পাওনা'}</span><em>মোট ${M(t)} · ${l.k==='owe'?'শোধ':'ফেরত'} ${M(s)}</em></div><b>${r>0?M(r):'✅'}</b></div>`}).join('');
+ const overdue=D.l.filter(l=>l.due&&tot(l)-sum(l.e)>0&&daysTo(l.due)<0);
+ return `<h2>রিপোর্ট</h2>
+ <div class="card"><b>সারসংক্ষেপ</b><div class="hi"><span>মোট সঞ্চয়</span><b>${M(T.saved)}</b></div><div class="hi"><span>সব লক্ষ্যের যোগফল</span><b>${M(T.target)}</b></div><div class="hi"><span>লক্ষ্যে পৌঁছাতে বাকি</span><b>${M(Math.max(0,T.target-T.saved))}</b></div><div class="hi"><span>দেনা বাকি</span><b style="color:var(--red)">${M(T.oweRem)}</b></div><div class="hi"><span>পাওনা বাকি</span><b style="color:var(--blue)">${M(T.lentRem)}</b></div>${overdue.length?`<div class="warn">⚠️ মেয়াদ পেরিয়েছে: ${overdue.map(l=>l.n).join(', ')}</div>`:''}</div>
+ <div class="card"><b>মাসিক সঞ্চয় জমা (৬ মাস)</b>${bars(dep,'var(--gold)')}</div>
+ <div class="card"><b>মাসিক ঋণ পরিশোধ</b>${bars(pay,'var(--red)')}</div>
+ <div class="card"><b>মাসিক পাওনা আদায়</b>${bars(got,'var(--blue)')}</div>
+ <div class="card"><b>লক্ষ্য অনুযায়ী</b>${gl||'<div class="note">কিছু নেই</div>'}</div>
+ <div class="card"><b>ঋণ অনুযায়ী</b>${ll||'<div class="note">কিছু নেই</div>'}</div>`;
+}
+function settings(){return `<h2>সেটিং</h2><div class="card"><label>ঋণের শেষ তারিখের রিমাইন্ডার (আগের দিন ও সেই দিন সকাল ৯টায়)</label><select id="srem"><option value="1" ${D.rem?'selected':''}>চালু</option><option value="0" ${D.rem?'':'selected'}>বন্ধ</option></select><button class="btn b-mint" data-act="saveset">সেভ</button></div>
+ <button class="btn b-gray" data-act="export">📋 ডেটা কপি (ব্যাকআপ)</button><button class="btn b-gray" data-act="import">📥 ব্যাকআপ থেকে ফেরত আনুন</button><button class="btn b-red" data-act="reset">সব ডেটা মুছুন</button><div class="note">সব তথ্য শুধু আপনার ফোনেই থাকে।</div>`}
+
+function render(){
+ $('view').innerHTML=tab==='home'?home():tab==='g'?goals():tab==='l'?loans():tab==='r'?report():settings();
+ $('nav').innerHTML=[['home','🏠','হোম'],['g','🎯','সঞ্চয়'],['l','🤝','ঋণ'],['r','📊','রিপোর্ট'],['s','⚙️','সেটিং']].map(t=>`<button data-tab="${t[0]}" class="${tab===t[0]?'on':''}"><span>${t[1]}</span>${t[2]}</button>`).join('');
+}
+const open=h=>{$('form').innerHTML=h;$('sheet').classList.add('open')},close=()=>$('sheet').classList.remove('open');
+const val=id=>$(id).value;
+
+function goalForm(id){const g=id?gid(id):null;open(`<h2>${g?'লক্ষ্য এডিট':'নতুন সঞ্চয় লক্ষ্য'}</h2><label>লক্ষ্যের নাম (যেমন: বাইক, ঈদ, জরুরি ফান্ড)</label><input id="gn" value="${g?g.n:''}"><label>টার্গেট পরিমাণ (৳)</label><input id="gt" type="number" inputmode="decimal" value="${g?g.t:''}"><label>শেষ তারিখ (ঐচ্ছিক)</label><input id="gd" type="date" value="${g&&g.dl?g.dl:''}"><div class="row"><button class="btn b-gray" data-act="close">বাতিল</button><button class="btn b-gold" data-act="saveg" data-id="${id||''}">সেভ</button></div>${g?`<button class="btn b-red" data-act="delg" data-id="${id}">মুছে ফেলুন</button>`:''}`)}
+function loanForm(id){const l=id?lid(id):null;open(`<h2>${l?'ঋণ এডিট':'নতুন ঋণ'}</h2><label>ধরন</label><select id="lk"><option value="owe" ${l&&l.k==='lent'?'':'selected'}>আমি নিয়েছি (দেনা)</option><option value="lent" ${l&&l.k==='lent'?'selected':''}>আমি দিয়েছি (পাওনা)</option></select><label>কার কাছ থেকে / কাকে</label><input id="ln" value="${l?l.n:''}"><label>আসল পরিমাণ (৳)</label><input id="lp" type="number" inputmode="decimal" value="${l?l.p:''}"><label>সুদ / অতিরিক্ত (৳, ঐচ্ছিক)</label><input id="lx" type="number" inputmode="decimal" value="${l&&l.x?l.x:''}"><label>মাসিক কিস্তি (৳, ঐচ্ছিক)</label><input id="li" type="number" inputmode="decimal" value="${l&&l.i?l.i:''}"><label>শেষ তারিখ (ঐচ্ছিক)</label><input id="ld" type="date" value="${l&&l.due?l.due:''}"><div class="row"><button class="btn b-gray" data-act="close">বাতিল</button><button class="btn b-gold" data-act="savel" data-id="${id||''}">সেভ</button></div>${l?`<button class="btn b-red" data-act="dell" data-id="${id}">মুছে ফেলুন</button>`:''}`)}
+function entryForm(kind,id,sign){const l=kind==='l'?lid(id):null;const title=kind==='g'?(sign>0?'জমা করুন':'উত্তোলন'):(l.k==='owe'?'পরিশোধ করুন':'ফেরত পেয়েছি');
+ open(`<h2>${title}</h2><label>পরিমাণ (৳)</label><input id="ea" type="number" inputmode="decimal" ${kind==='l'&&l.i?`value="${l.i}"`:''}><label>তারিখ</label><input id="et" type="date" value="${iso(Date.now())}"><label>নোট (ঐচ্ছিক)</label><input id="en"><div class="row"><button class="btn b-gray" data-act="close">বাতিল</button><button class="btn b-mint" data-act="savee" data-k="${kind}" data-id="${id}" data-s="${sign}">সেভ</button></div>`)}
+function histRows(e,k,id){return sorted(e).map(x=>`<div class="hi"><div>${x.a<0?'−':''}${M(Math.abs(x.a))}<em>${fd(x.t)}${x.n?' · '+x.n:''}</em></div><button class="x" data-dele="${k}:${id}:${x.t}:${x.a}">✕</button></div>`).join('')||'<div class="note">কোনো এন্ট্রি নেই।</div>'}
+const sorted=a=>a.slice().sort((x,y)=>y.t-x.t);
+function goalDetail(id){const g=gid(id),s=sum(g.e),r=Math.max(0,g.t-s);
+ open(`<h2>${g.n}</h2><div class="grid"><div class="stat"><b>${M(s)}</b><span>জমা হয়েছে</span></div><div class="stat"><b>${M(r)}</b><span>বাকি</span></div></div><div class="bar"><i style="width:${pc(s,g.t)}%;background:var(--gold)"></i></div><div class="mute">লক্ষ্য ${M(g.t)}${g.dl?' · শেষ '+fd(g.dl):''}</div>
+ <div class="row"><button class="btn b-mint" data-act="dep" data-id="${id}">➕ জমা</button><button class="btn b-gray" data-act="wd" data-id="${id}">➖ উত্তোলন</button></div><div class="row"><button class="btn b-gray" data-act="editg" data-id="${id}">✏️ এডিট</button><button class="btn b-gray" data-act="close">বন্ধ</button></div><label>ইতিহাস</label>${histRows(g.e,'g',id)}`)}
+function loanDetail(id){const l=lid(id),t=tot(l),s=sum(l.e),r=Math.max(0,t-s);
+ open(`<h2>${l.n} <span class="tag">${l.k==='owe'?'দেনা':'পাওনা'}</span></h2><div class="grid"><div class="stat"><b>${M(t)}</b><span>মোট (আসল ${M(l.p)}${l.x?' + '+M(l.x):''})</span></div><div class="stat"><b>${M(s)}</b><span>${l.k==='owe'?'পরিশোধ':'ফেরত'}</span></div></div><div class="bar"><i style="width:${pc(s,t)}%;background:${l.k==='owe'?'var(--red)':'var(--blue)'}"></i></div><div class="row2"><span class="mute">বাকি</span><b style="font-size:22px">${M(r)}</b></div>${l.i?`<div class="mute">মাসিক কিস্তি ${M(l.i)}${r>0?' · আরও ~'+bn(Math.ceil(r/l.i))+' কিস্তি':''}</div>`:''}${l.due?`<div class="mute">শেষ তারিখ ${fd(l.due)}</div>`:''}
+ <div class="row"><button class="btn b-mint" data-act="pay" data-id="${id}">${l.k==='owe'?'💸 পরিশোধ':'📥 ফেরত পেয়েছি'}</button><button class="btn b-gray" data-act="editl" data-id="${id}">✏️ এডিট</button></div><button class="btn b-gray" data-act="close">বন্ধ</button><label>ইতিহাস</label>${histRows(l.e,'l',id)}`)}
+
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-tab]');if(t){tab=t.dataset.tab;render();return}
+ const f=e.target.closest('[data-lf]');if(f){lf=f.dataset.lf;render();return}
+ const g=e.target.closest('[data-g]');if(g){goalDetail(+g.dataset.g);return}
+ const l=e.target.closest('[data-l]');if(l){loanDetail(+l.dataset.l);return}
+ const de=e.target.closest('[data-dele]');if(de){if(!confirm('এই এন্ট্রি মুছবেন?'))return;const[k,id,ts,a]=de.dataset.dele.split(':');const o=k==='g'?gid(+id):lid(+id);const i=o.e.findIndex(x=>x.t===+ts&&x.a===+a);if(i>=0)o.e.splice(i,1);save();k==='g'?goalDetail(+id):loanDetail(+id);render();return}
+ const a=e.target.closest('[data-act]');if(!a)return;const act=a.dataset.act,id=+a.dataset.id||0;
+ if(act==='close')close();
+ else if(act==='newg')goalForm();else if(act==='newl')loanForm();
+ else if(act==='editg')goalForm(id);else if(act==='editl')loanForm(id);
+ else if(act==='dep')entryForm('g',id,1);else if(act==='wd')entryForm('g',id,-1);else if(act==='pay')entryForm('l',id,1);
+ else if(act==='saveg'){const n=val('gn').trim(),tg=+val('gt');if(!n||!(tg>0)){alert('নাম ও টার্গেট দিন');return}
+  if(id){const o=gid(id);o.n=n;o.t=tg;o.dl=val('gd')}else D.g.push({id:D.n++,n,t:tg,dl:val('gd'),e:[]});save();close();render()}
+ else if(act==='savel'){const n=val('ln').trim(),p=+val('lp');if(!n||!(p>0)){alert('নাম ও পরিমাণ দিন');return}
+  const o={n,k:val('lk'),p,x:+val('lx')||0,i:+val('li')||0,due:val('ld')};
+  if(id)Object.assign(lid(id),o);else D.l.push({id:D.n++,e:[],...o});save();close();render()}
+ else if(act==='savee'){const amt=+val('ea');if(!(amt>0)){alert('পরিমাণ দিন');return}const k=a.dataset.k,s=+a.dataset.s,o=k==='g'?gid(id):lid(id);
+  o.e.push({t:tsOf(val('et')),a:amt*s,n:val('en')});save();close();render();k==='g'?goalDetail(id):loanDetail(id)}
+ else if(act==='delg'){if(confirm('এই লক্ষ্য ও এর সব ইতিহাস মুছবেন?')){D.g=D.g.filter(x=>x.id!==id);save();close();render()}}
+ else if(act==='dell'){if(confirm('এই ঋণ ও এর সব ইতিহাস মুছবেন?')){D.l=D.l.filter(x=>x.id!==id);save();close();render()}}
+ else if(act==='saveset'){D.rem=val('srem')==='1';save();alert('সেভ হয়েছে')}
+ else if(act==='export'){const s=JSON.stringify(D);try{navigator.clipboard.writeText(s);alert('কপি হয়েছে। কোথাও পেস্ট করে রাখুন।')}catch(x){prompt('কপি করুন',s)}}
+ else if(act==='import'){const s=prompt('ব্যাকআপের লেখা পেস্ট করুন');if(!s)return;try{const v=JSON.parse(s);if(!v.g||!v.l)throw 0;D={...DEF,...v};save();render();alert('ফেরত এসেছে')}catch(x){alert('ব্যাকআপটি ঠিক নেই')}}
+ else if(act==='reset'){if(confirm('সব ডেটা মুছে যাবে। নিশ্চিত?')){D=JSON.parse(JSON.stringify(DEF));save();render()}}
+});
+$('sheet').addEventListener('click',e=>{if(e.target.id==='sheet')close()});
+
+// reminders
+const LN=()=>window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.LocalNotifications;
+const CH='sl-alert';
+async function initN(){const L=LN();if(!L)return;try{await L.requestPermissions()}catch(e){}try{await L.createChannel({id:CH,name:'ঋণ রিমাইন্ডার',importance:4,vibration:true})}catch(e){}schedule()}
+async function schedule(){const L=LN();if(!L)return;
+ try{const p=await L.getPending();if(p.notifications.length)await L.cancel({notifications:p.notifications.map(n=>({id:n.id}))});
+  if(!D.rem)return;const list=[];
+  D.l.forEach(l=>{if(!l.due||tot(l)-sum(l.e)<=0)return;const r=M(tot(l)-sum(l.e)),d=new Date(l.due+'T09:00:00'),pre=new Date(d.getTime()-864e5);
+   const what=l.k==='owe'?'পরিশোধের':'আদায়ের';
+   if(d>Date.now())list.push({id:l.id*10+1,title:'📅 আজ '+what+' শেষ দিন',body:l.n+' — বাকি '+r,channelId:CH,schedule:{at:d,allowWhileIdle:true}});
+   if(pre>Date.now())list.push({id:l.id*10+2,title:'⏰ আগামীকাল '+what+' শেষ দিন',body:l.n+' — বাকি '+r,channelId:CH,schedule:{at:pre,allowWhileIdle:true}})});
+  if(list.length)await L.schedule({notifications:list})}catch(e){}}
+
+render();initN();
+</script>
+</body>
+</html>
